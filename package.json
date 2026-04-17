@@ -1,0 +1,17 @@
+{
+  "name": "zonetracker-resolver",
+  "version": "0.1.0",
+  "description": "MLB/NBA/NHL deterministic data resolver for ZoneTracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "fastify": "^5.1.0",
+    "better-sqlite3": "^11.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
