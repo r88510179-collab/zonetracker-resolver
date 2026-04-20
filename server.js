@@ -2,7 +2,9 @@ const path = require('path');
 const fastify = require('fastify')({ logger: true });
 const { openDb, runMigrations } = require('./src/db/migrate');
 const { seedTeams } = require('./src/mlb/teamsSeeder');
+const { startScheduler } = require('./src/mlb/scheduler');
 const adminRoutes = require('./src/routes/admin');
+const mlbRoutes = require('./src/routes/mlb');
 
 const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '::';
@@ -34,6 +36,7 @@ async function main() {
 
   fastify.decorate('db', db);
   await fastify.register(adminRoutes, { prefix: '/admin' });
+  await fastify.register(mlbRoutes, { prefix: '/mlb' });
 
   const teamCount = db.prepare('SELECT COUNT(*) as c FROM mlb_teams').get().c;
   if (teamCount === 0) {
@@ -47,6 +50,8 @@ async function main() {
       );
     }
   }
+
+  startScheduler(db, fastify.log);
 
   try {
     await fastify.listen({ port: PORT, host: HOST });

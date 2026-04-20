@@ -1,4 +1,7 @@
 const { seedTeams } = require('../mlb/teamsSeeder');
+const { pullSchedule } = require('../mlb/schedulePuller');
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 async function adminRoutes(fastify, _opts) {
   fastify.addHook('onRequest', async (req, reply) => {
@@ -10,10 +13,26 @@ async function adminRoutes(fastify, _opts) {
     }
   });
 
-  fastify.post('/seed-teams', async (_req, _reply) => {
+  fastify.post('/seed-teams', async () => {
     const startedAt = Date.now();
     const seeded = await seedTeams(fastify.db, { force: true });
     return { seeded, duration_ms: Date.now() - startedAt };
+  });
+
+  fastify.post('/pull-schedule', async (req, reply) => {
+    const body = req.body || {};
+    const { start, end } = body;
+    if (start != null && !DATE_RE.test(start)) {
+      return reply.code(400).send({ error: 'invalid start (YYYY-MM-DD)' });
+    }
+    if (end != null && !DATE_RE.test(end)) {
+      return reply.code(400).send({ error: 'invalid end (YYYY-MM-DD)' });
+    }
+    try {
+      return await pullSchedule(fastify.db, { start, end });
+    } catch (err) {
+      return reply.code(500).send({ error: err.message });
+    }
   });
 }
 
