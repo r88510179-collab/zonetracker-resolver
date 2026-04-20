@@ -1,5 +1,6 @@
 const { seedTeams } = require('../mlb/teamsSeeder');
 const { pullSchedule } = require('../mlb/schedulePuller');
+const { pullBoxscore, pullPendingBoxscores } = require('../mlb/boxscorePuller');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -30,6 +31,40 @@ async function adminRoutes(fastify, _opts) {
     }
     try {
       return await pullSchedule(fastify.db, { start, end });
+    } catch (err) {
+      return reply.code(500).send({ error: err.message });
+    }
+  });
+
+  fastify.post('/pull-boxscore', async (req, reply) => {
+    const body = req.body || {};
+    const gamePk = Number(body.gamePk);
+    if (!Number.isInteger(gamePk) || gamePk <= 0) {
+      return reply.code(400).send({ error: 'gamePk required (integer)' });
+    }
+    const statusRow = fastify.db
+      .prepare('SELECT status_code FROM mlb_games WHERE game_pk = ?')
+      .get(gamePk);
+    if (statusRow && statusRow.status_code !== 'F') {
+      req.log.warn(
+        { gamePk, status_code: statusRow.status_code },
+        '[admin] pull-boxscore on non-final game'
+      );
+    }
+    try {
+      return await pullBoxscore(fastify.db, gamePk);
+    } catch (err) {
+      return reply.code(500).send({ error: err.message });
+    }
+  });
+
+  fastify.post('/pull-pending-boxscores', async (req, reply) => {
+    const body = req.body || {};
+    let limit = body.limit == null ? 5 : Number(body.limit);
+    if (!Number.isInteger(limit) || limit < 1) limit = 5;
+    if (limit > 20) limit = 20;
+    try {
+      return await pullPendingBoxscores(fastify.db, req.log, { limit });
     } catch (err) {
       return reply.code(500).send({ error: err.message });
     }

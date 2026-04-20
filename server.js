@@ -2,7 +2,7 @@ const path = require('path');
 const fastify = require('fastify')({ logger: true });
 const { openDb, runMigrations } = require('./src/db/migrate');
 const { seedTeams } = require('./src/mlb/teamsSeeder');
-const { startScheduler } = require('./src/mlb/scheduler');
+const { startScheduler, startBoxscoreScheduler } = require('./src/mlb/scheduler');
 const adminRoutes = require('./src/routes/admin');
 const mlbRoutes = require('./src/routes/mlb');
 
@@ -52,6 +52,7 @@ async function main() {
   }
 
   startScheduler(db, fastify.log);
+  startBoxscoreScheduler(db, fastify.log);
 
   try {
     await fastify.listen({ port: PORT, host: HOST });
