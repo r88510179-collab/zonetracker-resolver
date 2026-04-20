@@ -3,18 +3,28 @@ const path = require('path');
 const Database = require('better-sqlite3');
 
 function resolveDbPath() {
-  if (process.env.RESOLVER_DB_PATH) return process.env.RESOLVER_DB_PATH;
-  return process.env.NODE_ENV === 'production'
-    ? '/data/resolver.db'
-    : './data/resolver.db';
+  if (process.env.RESOLVER_DB_PATH) {
+    return { path: process.env.RESOLVER_DB_PATH, source: 'env' };
+  }
+  if (process.env.FLY_APP_NAME) {
+    return { path: '/data/resolver.db', source: 'fly' };
+  }
+  return { path: './data/resolver.db', source: 'local' };
 }
 
 function openDb(dbPath) {
-  const resolved = dbPath || resolveDbPath();
+  let resolved, source;
+  if (dbPath) {
+    resolved = dbPath;
+    source = 'explicit';
+  } else {
+    ({ path: resolved, source } = resolveDbPath());
+  }
   fs.mkdirSync(path.dirname(resolved), { recursive: true });
   const db = new Database(resolved);
   db.pragma('journal_mode = WAL');
   db.pragma('busy_timeout = 5000');
+  console.log(`[db] using ${resolved} (source: ${source})`);
   return db;
 }
 
