@@ -1,4 +1,6 @@
+const path = require('path');
 const fastify = require('fastify')({ logger: true });
+const { openDb, runMigrations, resolveDbPath } = require('./src/db/migrate');
 
 const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '::';
@@ -18,6 +20,19 @@ fastify.get('/', async () => {
 });
 
 async function main() {
+  const dbPath = resolveDbPath();
+  let db;
+  try {
+    db = openDb(dbPath);
+    runMigrations(db, path.join(__dirname, 'src/db/migrations'));
+    console.log(`[boot] migrations complete, db=${dbPath}`);
+  } catch (err) {
+    console.error('[boot] migration failure:', err);
+    process.exit(1);
+  }
+
+  fastify.decorate('db', db);
+
   try {
     await fastify.listen({ port: PORT, host: HOST });
     fastify.log.info(`Resolver listening on ${HOST}:${PORT}`);
